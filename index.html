@@ -3,20 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>午餐加權轉盤系統</title>
+    <title>午餐加權轉盤 - 最終網頁版</title>
     <style>
-        body { font-family: "Microsoft JhengHei", sans-serif; text-align: center; background-color: #f4f4f9; }
-        #wheel-container { position: relative; width: 350px; margin: 20px auto; }
-        canvas { border-radius: 50%; box-shadow: 0 0 15px rgba(0,0,0,0.2); background: white; }
+        body { font-family: "Microsoft JhengHei", sans-serif; text-align: center; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        h1 { color: #333; margin-bottom: 10px; }
+        #wheel-container { position: relative; width: 360px; height: 360px; margin: 20px auto; }
+        canvas { border-radius: 50%; box-shadow: 0 4px 15px rgba(0,0,0,0.3); background: white; }
         #pointer {
-            position: absolute; right: -20px; top: 50%; transform: translateY(-50%);
+            position: absolute; right: -15px; top: 50%; transform: translateY(-50%);
             width: 0; height: 0; border-top: 15px solid transparent;
-            border-bottom: 15px solid transparent; border-right: 30px solid #f44336;
+            border-bottom: 15px solid transparent; border-right: 35px solid #f44336;
+            filter: drop-shadow(-2px 0 2px rgba(0,0,0,0.2));
+            z-index: 10;
         }
-        .controls { margin: 20px; padding: 15px; background: white; display: inline-block; border-radius: 10px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #f44336; color: white; border: none; border-radius: 5px; }
-        button:hover { background: #d32f2f; }
-        select, input { padding: 8px; margin: 5px; }
+        .controls { margin-bottom: 15px; padding: 15px; background: white; border-radius: 12px; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #f44336; color: white; border: none; border-radius: 8px; transition: 0.3s; }
+        button:hover { background: #d32f2f; transform: scale(1.05); }
+        select, input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 5px; }
+        #spinBtn { width: 220px; font-size: 20px; font-weight: bold; background: #4CAF50; margin-top: 10px; }
+        #spinBtn:hover { background: #45a049; }
     </style>
 </head>
 <body>
@@ -24,29 +29,30 @@
     <h1>🎡 午餐加權轉盤</h1>
 
     <div class="controls">
-        <label>分類：</label>
+        <label>選擇分類：</label>
         <select id="categorySelect" onchange="changeCategory()">
             <option value="飯">飯</option>
             <option value="麵">麵</option>
             <option value="小吃">小吃</option>
             <option value="其他">其他</option>
         </select>
-        <button onclick="resetData()" style="background: #999;">恢復預設</button>
+        <button onclick="resetData()" style="background: #777;">🔄 恢復預設</button>
     </div>
 
     <div id="wheel-container">
-        <canvas id="wheelCanvas" width="350" height="350"></canvas>
+        <canvas id="wheelCanvas" width="360" height="360"></canvas>
         <div id="pointer"></div>
     </div>
 
     <div class="controls">
-        <button id="spinBtn" onclick="startSpin()" style="width: 200px; font-weight: bold;">開始旋轉！</button>
+        <button id="spinBtn" onclick="startSpin()">開始旋轉！</button>
     </div>
 
     <div class="controls">
-        <h3>新增項目</h3>
-        <input type="text" id="newName" placeholder="店名">
-        <input type="number" id="newWeight" value="1" min="1" max="5" style="width: 50px;">
+        <h3>➕ 自定義新增</h3>
+        <input type="text" id="newName" placeholder="店名" style="width: 100px;">
+        <label>權重:</label>
+        <input type="number" id="newWeight" value="1" min="1" max="5" style="width: 40px;">
         <button onclick="addItem()" style="background: #2196F3;">加入</button>
     </div>
 
@@ -54,12 +60,12 @@
     const canvas = document.getElementById('wheelCanvas');
     const ctx = canvas.getContext('2d');
     
-    // 原始資料備份
+    // 初始化清單與權重
     const defaultData = {
         "飯": [["黑盒子蛋包飯", 4], ["127咖哩", 3], ["純粹咖哩", 3], ["力軒屋", 1], ["搞飛機", 2]],
-        "麵": [["作拌乾拌麵", 2], ["夏帕義大利麵", 4], ["九湯屋拉麵", 3], ["牛肉麵", 3]],
+        "麵": [["作拌乾拌麵", 2], ["夏帕義大利麵", 4], ["九湯屋拉麵", 3], ["泡麵阿姨", 1], ["牛肉麵", 3]],
         "小吃": [["地瓜球", 2], ["鹹酥雞", 5], ["蔥油餅", 3], ["古早味蛋餅", 3]],
-        "其他": [["麥當勞", 4], ["便利商店", 1], ["鍋貼", 3], ["火鍋", 4], ["打麻將", 1]]
+        "其他": [["麥當勞", 4], ["便利商店", 1], ["鍋貼", 3], ["無名麻辣", 3], ["水餃", 2], ["火鍋", 4], ["打麻將", 1]]
     };
 
     let data = JSON.parse(JSON.stringify(defaultData));
@@ -70,53 +76,73 @@
 
     function drawWheel() {
         const items = data[currentCategory];
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
         if (items.length === 0) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillText("清單已空", 175, 175);
+            ctx.fillStyle = "#666";
+            ctx.font = "16px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("此分類已抽完，請點擊恢復預設", cx, cy);
             return;
         }
 
         const totalWeight = items.reduce((sum, item) => sum + item[1], 0);
         let startAngle = currentAngle;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
         items.forEach((item, i) => {
             const extent = (item[1] / totalWeight) * 2 * Math.PI;
             
-            // 畫扇形
+            // 1. 畫扇形
             ctx.beginPath();
-            ctx.moveTo(175, 175);
-            ctx.arc(175, 175, 170, startAngle, startAngle + extent);
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, cx - 10, startAngle, startAngle + extent);
             ctx.fillStyle = colors[i % colors.length];
             ctx.fill();
             ctx.strokeStyle = "white";
+            ctx.lineWidth = 2;
             ctx.stroke();
 
-            // 畫正向文字
+            // 2. 畫正向文字
             ctx.save();
             const textAngle = startAngle + extent / 2;
-            const x = 175 + 100 * Math.cos(textAngle);
-            const y = 175 + 100 * Math.sin(textAngle);
+            const x = cx + (cx - 70) * Math.cos(textAngle);
+            const y = cy + (cx - 70) * Math.sin(textAngle);
+            
             ctx.translate(x, y);
             ctx.fillStyle = "black";
-            ctx.font = "bold 14px Microsoft JhengHei";
             ctx.textAlign = "center";
-            ctx.fillText(item[0], 0, 0);
+            ctx.textBaseline = "middle";
+            
+            // 繪製店名 (稍微往上)
+            ctx.font = "bold 13px Microsoft JhengHei";
+            ctx.fillText(item[0], 0, -8);
+            
+            // 繪製權重 (稍微往下，字小一點)
+            ctx.font = "10px Arial";
+            ctx.fillText(`(重:${item[1]})`, 0, 8);
+            
             ctx.restore();
-
             startAngle += extent;
         });
+
+        // 畫中心點
+        ctx.beginPath();
+        ctx.arc(cx, cy, 6, 0, 2 * Math.PI);
+        ctx.fillStyle = "#333";
+        ctx.fill();
     }
 
     function startSpin() {
         if (isSpinning || data[currentCategory].length === 0) return;
         isSpinning = true;
-        let speed = Math.random() * 0.2 + 0.3;
-        const decay = 0.98;
+        let speed = Math.random() * 0.25 + 0.35; // 隨機初始速度
+        const decay = 0.985;
 
         function animate() {
-            if (speed > 0.002) {
+            if (speed > 0.0015) {
                 currentAngle += speed;
                 drawWheel();
                 speed *= decay;
@@ -132,7 +158,8 @@
     function getResult() {
         const items = data[currentCategory];
         const totalWeight = items.reduce((sum, item) => sum + item[1], 0);
-        // 計算指向右側 (0度) 的結果
+        
+        // 指針在右側 0 度
         let normalizedAngle = (2 * Math.PI - (currentAngle % (2 * Math.PI))) % (2 * Math.PI);
         
         let currentSum = 0;
@@ -147,14 +174,15 @@
         }
 
         const winner = items[winnerIndex][0];
-        alert(`🎉 今天決定吃：${winner}！`);
-        
-        if (confirm(`是否開啟 Google 地圖搜尋「${winner}」？`)) {
-            window.open(`https://www.google.com/maps/search/${encodeURIComponent(winner)}`, '_blank');
-        }
-
-        data[currentCategory].splice(winnerIndex, 1);
-        drawWheel();
+        // 延遲一點點顯示彈窗，讓轉盤完全停穩
+        setTimeout(() => {
+            alert(`🎉 今天決定吃：${winner}！`);
+            if (confirm(`是否開啟 Google 地圖搜尋「${winner}」？`)) {
+                window.open(`https://www.google.com/maps/search/${encodeURIComponent(winner)}`, '_blank');
+            }
+            data[currentCategory].splice(winnerIndex, 1);
+            drawWheel();
+        }, 100);
     }
 
     function changeCategory() {
@@ -164,7 +192,7 @@
     }
 
     function addItem() {
-        const name = document.getElementById('newName').value;
+        const name = document.getElementById('newName').value.trim();
         const weight = parseInt(document.getElementById('newWeight').value);
         if (name) {
             data[currentCategory].push([name, weight]);
@@ -174,8 +202,9 @@
     }
 
     function resetData() {
-        if (confirm("恢復初始名單？")) {
+        if (confirm("確定要恢復初始預設名單嗎？")) {
             data = JSON.parse(JSON.stringify(defaultData));
+            currentAngle = 0;
             drawWheel();
         }
     }
